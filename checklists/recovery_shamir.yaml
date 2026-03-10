@@ -1,0 +1,18 @@
+checklist_id: crypto_shamir
+stage: recovery
+items:
+  - id: SH01
+    question: "Is the secret (Master Key) split using proper Shamir Secret Sharing (polynomial interpolation over finite field)?"
+    severity: critical
+  - id: SH02
+    question: "Are shares distributed to distinct custodians (not all stored in the same location as the MK)?"
+    severity: critical
+  - id: SH03
+    question: "Is the threshold K < N (cannot require ALL shares, which defeats fault tolerance)?"
+    severity: high
+  - id: SH04
+    question: "Are individual shares encrypted before storage/transmission?"
+    severity: high
+  - id: SH05
+    question: "Is the reconstruction performed client-side only (server never sees assembled secret)?"
+    severity: critical

@@ -1,0 +1,18 @@
+checklist_id: transport_p2p
+stage: p2p
+items:
+  - id: P2P01
+    question: "Is WebRTC signaling authenticated (only logged-in users can exchange SDP/ICE candidates)?"
+    severity: critical
+  - id: P2P02
+    question: "Is DTLS enforced for the data channel (not plain UDP)?"
+    severity: critical
+  - id: P2P03
+    question: "Are TURN server credentials short-lived (not hardcoded permanent credentials)?"
+    severity: high
+  - id: P2P04
+    question: "Is there an application-level encryption layer on top of DTLS (end-to-end, not just transport)?"
+    severity: medium
+  - id: P2P05
+    question: "Are ICE candidates filtered to prevent private IP leakage (mDNS candidates only in production)?"
+    severity: medium

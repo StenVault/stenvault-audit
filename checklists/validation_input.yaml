@@ -1,0 +1,27 @@
+checklist_id: input_validation
+stage: validation
+items:
+  - id: IV01
+    question: "Does every tRPC procedure (mutation/query) that accepts input have a Zod schema?"
+    severity: high
+  - id: IV02
+    question: "Are file IDs validated as UUID format (z.string().uuid())?"
+    severity: high
+  - id: IV03
+    question: "Is there any raw SQL string concatenation (not using Drizzle ORM parameterized queries)?"
+    severity: critical
+  - id: IV04
+    question: "Are filenames sanitized against path traversal (../, ..\\ sequences)?"
+    severity: critical
+  - id: IV05
+    question: "Are user-provided URLs validated before being used in server-side requests (SSRF prevention)?"
+    severity: high
+  - id: IV06
+    question: "Is HTML/script content in user input sanitized before storage or rendering (XSS prevention)?"
+    severity: high
+  - id: IV07
+    question: "Are base64-encoded inputs validated for correct format before decoding (prevents buffer overflow from malformed input)?"
+    severity: medium
+  - id: IV08
+    question: "Are array inputs bounded in size (e.g., z.array().max(N)) to prevent memory exhaustion?"
+    severity: medium

@@ -1,0 +1,33 @@
+checklist_id: crypto_hybrid_pqc
+stage: crypto
+items:
+  - id: PQ01
+    question: "Is ML-KEM-768 secret key (2400 bytes) encrypted using AES-256-GCM (encryptLargeSecretKey), NOT AES-KW?"
+    severity: critical
+  - id: PQ02
+    question: "Is X25519 secret key (32 bytes) wrapped using AES-KW or AES-256-GCM?"
+    severity: high
+  - id: PQ03
+    question: "Does HKDF combine BOTH shared secrets (X25519 ECDH + ML-KEM decapsulation) before deriving the file key?"
+    severity: critical
+  - id: PQ04
+    question: "Is ML-KEM encapsulation performed using the PUBLIC key (not the secret key)?"
+    severity: critical
+  - id: PQ05
+    question: "Is ML-KEM decapsulation performed using the SECRET key (not the public key)?"
+    severity: critical
+  - id: PQ06
+    question: "Are ML-KEM and X25519 key pairs generated independently (not derived from same seed)?"
+    severity: high
+  - id: PQ07
+    question: "Is the CVEF header version correctly set to v1.2 or higher for hybrid-encrypted files?"
+    severity: medium
+  - id: PQ08
+    question: "Does the HKDF that combines shared secrets use a fixed, distinct 'info' label (not reused for other derivations)?"
+    severity: high
+  - id: PQ09
+    question: "If either KEM fails (X25519 or ML-KEM), does the system abort entirely rather than falling back to single-KEM?"
+    severity: critical
+  - id: PQ10
+    question: "Are ML-KEM ciphertext and X25519 ephemeral public key both stored/transmitted with the encrypted file (in CVEF header)?"
+    severity: high

@@ -1,0 +1,108 @@
+rules:
+  - id: iv-not-random
+    patterns:
+      - pattern: |
+          const $IV = new Uint8Array($SIZE)
+      - pattern-not-inside: |
+          crypto.getRandomValues($IV)
+    message: "IV allocated but never filled with crypto.getRandomValues() — all-zero IV breaks AES-GCM"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-329"
+      checklist_map: "C01"
+
+  - id: iv-hardcoded-array
+    pattern: |
+      { name: 'AES-GCM', iv: new Uint8Array([$...VALUES]) }
+    message: "Hardcoded IV array in AES-GCM — IV must be random or derived per operation"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-329"
+      checklist_map: "C01"
+
+  - id: iv-wrong-length-short
+    patterns:
+      - pattern: |
+          const $IV = new Uint8Array($SIZE)
+      - metavariable-comparison:
+          metavariable: $SIZE
+          comparison: $SIZE < 12
+      - pattern-inside: |
+          ...
+          { name: 'AES-GCM', iv: $IV }
+    message: "AES-GCM IV must be exactly 12 bytes — found $SIZE bytes"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-329"
+      checklist_map: "C02"
+
+  - id: iv-reuse-in-loop
+    pattern: |
+      for (...) {
+        ...
+        crypto.subtle.encrypt({ name: 'AES-GCM', iv: $IV }, $KEY, $DATA)
+        ...
+      }
+    message: "Same IV variable used inside loop — IV must be unique per encrypt call under same key"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-329"
+      checklist_map: "C03"
+
+  - id: iv-from-math-random
+    patterns:
+      - pattern: |
+          Math.random()
+      - pattern-inside: |
+          $IV = ...
+          ...
+          { ..., iv: $IV, ... }
+    message: "IV derived from Math.random() — must use crypto.getRandomValues()"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-338"
+      checklist_map: "C01"
+
+  - id: iv-from-date
+    patterns:
+      - pattern: |
+          Date.now()
+      - pattern-inside: |
+          $IV = ...
+          ...
+          { ..., iv: $IV, ... }
+    message: "IV derived from Date.now() — predictable, must use crypto.getRandomValues()"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-330"
+      checklist_map: "C01"
+
+  - id: iv-static-string
+    pattern: |
+      { name: 'AES-GCM', iv: new TextEncoder().encode($STATIC_STRING) }
+    message: "IV from static string — IV must be random or uniquely derived per operation"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-329"
+      checklist_map: "C01"
+
+  - id: gcm-tag-length-short
+    patterns:
+      - pattern: |
+          { name: 'AES-GCM', ..., tagLength: $LEN, ... }
+      - metavariable-comparison:
+          metavariable: $LEN
+          comparison: $LEN < 128
+    message: "AES-GCM tag length $LEN bits is too short — must be 128 bits"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-326"
+      checklist_map: "C04"

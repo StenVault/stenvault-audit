@@ -1,0 +1,129 @@
+rules:
+  - id: ecb-mode-usage
+    pattern: |
+      { name: 'AES-ECB', ... }
+    message: "ECB mode used — ECB does not provide semantic security, use AES-GCM"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-327"
+      checklist_map: "C06"
+
+  - id: cbc-without-hmac
+    patterns:
+      - pattern: |
+          { name: 'AES-CBC', ... }
+      - pattern-not-inside: |
+          ...
+          crypto.subtle.sign('HMAC', ...)
+          ...
+    message: "AES-CBC without HMAC authentication — vulnerable to padding oracle attacks"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-327"
+      checklist_map: "C06"
+
+  - id: md5-usage
+    pattern: |
+      crypto.subtle.digest('MD5', ...)
+    message: "MD5 is cryptographically broken — use SHA-256 or SHA-512"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-328"
+      checklist_map: "C06"
+
+  - id: sha1-usage
+    pattern: |
+      crypto.subtle.digest('SHA-1', ...)
+    message: "SHA-1 is deprecated — use SHA-256 or SHA-512"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-328"
+      checklist_map: "C06"
+
+  - id: eval-near-crypto
+    patterns:
+      - pattern: |
+          eval(...)
+      - pattern-inside: |
+          ...
+          crypto.subtle.$METHOD(...)
+          ...
+    message: "eval() used near cryptographic operations — potential code injection"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-95"
+
+  - id: plaintext-console-log
+    patterns:
+      - pattern-either:
+        - pattern: |
+            console.log(..., $KEY, ...)
+        - pattern: |
+            console.log($KEY)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: "(?i)(key|secret|password|token|iv|salt|nonce|private)"
+    message: "Sensitive variable logged to console — potential data exposure"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-532"
+      checklist_map: "C07"
+
+  - id: plaintext-in-error
+    patterns:
+      - pattern-either:
+        - pattern: |
+            throw new Error(`... ${$KEY} ...`)
+        - pattern: |
+            new Error(`... ${$KEY} ...`)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: "(?i)(key|secret|password|token|plaintext|decrypted)"
+    message: "Sensitive data included in error message — may leak in logs or stack traces"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-209"
+
+  - id: webcrypto-algorithm-string
+    pattern: |
+      crypto.subtle.$METHOD("$ALG", ...)
+    message: "Algorithm passed as string instead of AlgorithmIdentifier object — may cause type errors"
+    severity: INFO
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-327"
+
+  - id: crypto-timing-comparison
+    pattern: |
+      $A === $B
+    message: "Direct comparison of potential crypto values — use constant-time comparison to prevent timing attacks"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-208"
+    paths:
+      include:
+        - "**/auth*.ts"
+        - "**/verify*.ts"
+        - "**/hmac*.ts"
+        - "**/signature*.ts"
+
+  - id: no-try-catch-decrypt
+    patterns:
+      - pattern: |
+          $RESULT = await crypto.subtle.decrypt(...)
+      - pattern-not-inside: |
+          try { ... } catch (...) { ... }
+    message: "crypto.subtle.decrypt() without try/catch — failed auth tag verification throws and must be handled"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-391"
+      checklist_map: "C08"

@@ -1,0 +1,14 @@
+[
+  {
+    "pattern": "generateKeyPair",
+    "file_glob": "**/webHybridSignatureProvider.ts",
+    "suppress_checklist": "SIG04",
+    "reason": "Method name was fixed from keypair() to generateKeyPair() — now matches liboqs API"
+  },
+  {
+    "pattern": "CVEF.*v1\\.[23]",
+    "file_glob": "**/hybridFileCrypto.ts",
+    "suppress_checklist": "PQ07",
+    "reason": "CVEF version is correctly set during V4 hybrid encryption"
+  }
+]

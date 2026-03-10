@@ -1,0 +1,14 @@
+[
+  {
+    "pattern": "OPAQUE_SERVER_SETUP",
+    "file_glob": "**/opaqueAuth.ts",
+    "suppress_checklist": "OP01",
+    "reason": "OPAQUE server setup is correctly loaded from environment variable"
+  },
+  {
+    "pattern": "sessionStorage",
+    "file_glob": "**/auth*.ts",
+    "suppress_checklist": "A07",
+    "reason": "JWT tokens are stored in sessionStorage (cleared on tab close) — this is intentional"
+  }
+]

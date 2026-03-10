@@ -1,0 +1,27 @@
+checklist_id: dataflow_storage
+stage: dataflow
+items:
+  - id: DF01
+    question: "Do presigned upload URLs have expiration <= 15 minutes?"
+    severity: high
+  - id: DF02
+    question: "Do presigned upload URLs exclude ContentLength from the signing parameters? (Client encrypts AFTER getting URL — V4 header adds ~1.8KB, signatures ~4.4KB)"
+    severity: critical
+  - id: DF03
+    question: "Do presigned download URLs set ResponseContentType to the correct MIME type (not octet-stream)?"
+    severity: medium
+  - id: DF04
+    question: "Are files stored in R2 as application/octet-stream (encrypted blob, not original MIME)?"
+    severity: high
+  - id: DF05
+    question: "Is any file content (decrypted) ever stored, cached, or logged server-side, even temporarily?"
+    severity: critical
+  - id: DF06
+    question: "Are Redis keys for sessions/OTP/locks using TTL (not persisted indefinitely)?"
+    severity: high
+  - id: DF07
+    question: "Is Redis connection using TLS (rediss:// or explicit TLS config)?"
+    severity: high
+  - id: DF08
+    question: "Are presigned URLs single-use or scoped to a specific file/user?"
+    severity: medium

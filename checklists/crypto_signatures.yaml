@@ -1,0 +1,27 @@
+checklist_id: crypto_signatures
+stage: signatures
+items:
+  - id: SIG01
+    question: "Is Ed25519 signing using the PRIVATE key and verification using the PUBLIC key?"
+    severity: critical
+  - id: SIG02
+    question: "Is ML-DSA-65 signing using the PRIVATE key and verification using the PUBLIC key?"
+    severity: critical
+  - id: SIG03
+    question: "Are both Ed25519 AND ML-DSA-65 signatures required for a file to be considered validly signed? (Not either/or?)"
+    severity: critical
+  - id: SIG04
+    question: "Are the liboqs method names correct? (generateKeyPair, NOT keypair; sign/verify are sync, NOT async Promises?)"
+    severity: critical
+  - id: SIG05
+    question: "Is the message/digest being signed the actual file content hash (not metadata, not a placeholder)?"
+    severity: critical
+  - id: SIG06
+    question: "Are signature public keys bound to the user identity? (Can an attacker substitute their own public key?)"
+    severity: high
+  - id: SIG07
+    question: "Is signature verification performed on file download/preview, not only on upload?"
+    severity: high
+  - id: SIG08
+    question: "Are ML-DSA-65 secret keys (which may exceed 32 bytes) stored using encryptLargeSecretKey, not AES-KW?"
+    severity: critical

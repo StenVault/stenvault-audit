@@ -1,0 +1,33 @@
+checklist_id: crypto_aes_gcm
+stage: crypto
+items:
+  - id: C01
+    question: "Is every IV generated using crypto.getRandomValues() or derived via HKDF (not Math.random, not hardcoded)?"
+    severity: critical
+  - id: C02
+    question: "Is every IV exactly 12 bytes (96 bits) for AES-GCM?"
+    severity: critical
+  - id: C03
+    question: "Is the same IV never reused with the same key? (Check: if IV is derived, does derivation include a unique input like fileId + chunkIndex?)"
+    severity: critical
+  - id: C04
+    question: "Is GCM tag length 128 bits (the default)? If tagLength is explicitly set, is it 128?"
+    severity: high
+  - id: C05
+    question: "Are all AES keys exactly 32 bytes (256 bits)?"
+    severity: critical
+  - id: C06
+    question: "Is there any usage of ECB, CBC without HMAC, or other non-AEAD modes?"
+    severity: critical
+  - id: C07
+    question: "Is plaintext ever logged, stored in a variable that persists after encryption, or passed to an analytics/error reporting function?"
+    severity: critical
+  - id: C08
+    question: "Is the GCM authentication tag verified before any plaintext is processed or returned to the caller?"
+    severity: critical
+  - id: C09
+    question: "For chunked encryption: can chunks be reordered, duplicated, or truncated without detection? (Is chunk index bound to IV/AAD?)"
+    severity: high
+  - id: C10
+    question: "Is there a total file integrity check beyond per-chunk GCM tags? (e.g., HMAC over all chunk MACs, or total chunk count in header?)"
+    severity: medium

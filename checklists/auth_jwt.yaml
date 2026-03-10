@@ -1,0 +1,24 @@
+checklist_id: auth_jwt
+stage: auth
+items:
+  - id: A01
+    question: "Does JWT verification check the 'exp' (expiration) claim?"
+    severity: critical
+  - id: A02
+    question: "Is the JWT secret at least 32 characters and loaded from environment variables (not hardcoded)?"
+    severity: critical
+  - id: A03
+    question: "Is the 'none' algorithm explicitly rejected or is algorithm fixed to a specific value (e.g., HS256)?"
+    severity: critical
+  - id: A04
+    question: "Do JWT tokens appear in URL query parameters, logs, or error messages?"
+    severity: high
+  - id: A05
+    question: "Does refresh token rotation exist (old refresh token invalidated after use)?"
+    severity: high
+  - id: A06
+    question: "Is there a maximum session lifetime enforced server-side (not just token expiry)?"
+    severity: medium
+  - id: A07
+    question: "Are JWT tokens stored in httpOnly cookies or sessionStorage (not localStorage which persists across sessions)?"
+    severity: medium

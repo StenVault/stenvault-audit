@@ -1,0 +1,30 @@
+checklist_id: crypto_key_derivation
+stage: crypto
+items:
+  - id: KD01
+    question: "Is Argon2id used for password-to-key derivation (not bcrypt, not PBKDF2, not scrypt)?"
+    severity: critical
+  - id: KD02
+    question: "Is Argon2id memory parameter >= 47 MiB (49152 KiB)?"
+    severity: high
+  - id: KD03
+    question: "Is Argon2id iterations (time cost) >= 1?"
+    severity: high
+  - id: KD04
+    question: "Is the salt unique per user and at least 16 bytes?"
+    severity: critical
+  - id: KD05
+    question: "Is the salt hardcoded or shared across users?"
+    severity: critical
+  - id: KD06
+    question: "Is the derived key exactly 32 bytes?"
+    severity: high
+  - id: KD07
+    question: "Is the raw password zeroed/cleared from memory after derivation?"
+    severity: medium
+  - id: KD08
+    question: "Is HKDF used with a proper 'info' parameter to derive sub-keys from the master key? (Sub-keys for files, filenames, etc. must use distinct info strings.)"
+    severity: high
+  - id: KD09
+    question: "Is the HKDF salt at least 16 bytes and unique per derivation context?"
+    severity: high

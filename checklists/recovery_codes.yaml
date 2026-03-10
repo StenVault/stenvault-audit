@@ -1,0 +1,21 @@
+checklist_id: crypto_recovery
+stage: recovery
+items:
+  - id: RC01
+    question: "Are recovery codes generated using crypto.getRandomValues (not Math.random or sequential)?"
+    severity: critical
+  - id: RC02
+    question: "Are recovery codes hashed before storage? (Server never stores plaintext codes)"
+    severity: critical
+  - id: RC03
+    question: "Does the recovery code salt match between client and server? (Client: RECOVERY_SALT with trailing colon, server: cloudvault_recovery_code_salt_v1)"
+    severity: critical
+  - id: RC04
+    question: "Are recovery codes one-time use (marked as used after successful recovery)?"
+    severity: high
+  - id: RC05
+    question: "When resetting with a recovery code, does the system generate a fresh Master Key? (Old files become inaccessible by design)"
+    severity: high
+  - id: RC06
+    question: "Is the user clearly warned that recovery code reset means losing access to existing encrypted files?"
+    severity: medium

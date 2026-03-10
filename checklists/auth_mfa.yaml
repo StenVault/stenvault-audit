@@ -1,0 +1,18 @@
+checklist_id: auth_mfa
+stage: auth
+items:
+  - id: MFA01
+    question: "Is the TOTP secret generated using a cryptographically secure random source (not predictable)?"
+    severity: critical
+  - id: MFA02
+    question: "Is the TOTP time window limited (+/-1 step = 30 seconds each direction, not wider)?"
+    severity: high
+  - id: MFA03
+    question: "Is there rate limiting on TOTP verification attempts (prevents brute force of 6-digit code)?"
+    severity: high
+  - id: MFA04
+    question: "Is the TOTP secret stored encrypted server-side (not plaintext)?"
+    severity: high
+  - id: MFA05
+    question: "Are TOTP codes single-use? (Same code cannot be replayed within the time window?)"
+    severity: medium

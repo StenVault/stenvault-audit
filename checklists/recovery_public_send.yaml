@@ -1,0 +1,24 @@
+checklist_id: crypto_public_send
+stage: recovery
+items:
+  - id: PS01
+    question: "Is the file encryption key generated using crypto.getRandomValues (32 bytes) on the sender's browser?"
+    severity: critical
+  - id: PS02
+    question: "Is the key placed in the URL fragment (#key=...) and NEVER sent to the server as a query parameter or in the request body?"
+    severity: critical
+  - id: PS03
+    question: "Is the URL fragment using base64url encoding (not standard base64 which has + and / characters)?"
+    severity: medium
+  - id: PS04
+    question: "Does the Redis session have a TTL enforced (1h/24h/7d based on user selection)?"
+    severity: high
+  - id: PS05
+    question: "Is the encrypted blob stored in R2 with a random key (not user-predictable path)?"
+    severity: high
+  - id: PS06
+    question: "Is chunked encryption (5MB) used for large files, with per-chunk IVs?"
+    severity: high
+  - id: PS07
+    question: "Is there a maximum file size or session count limit to prevent abuse?"
+    severity: medium

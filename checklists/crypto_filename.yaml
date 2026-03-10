@@ -1,0 +1,24 @@
+checklist_id: crypto_filename_encryption
+stage: filename_enc
+items:
+  - id: FN01
+    question: "Is the filename encryption key derived from the Master Key via HKDF with a distinct 'info' label (not the same as file content key)?"
+    severity: critical
+  - id: FN02
+    question: "Does each filename encryption use a fresh random IV (not reused, not deterministic)?"
+    severity: critical
+  - id: FN03
+    question: "Is the encrypted filename stored as base64 or hex (not raw binary in a text field)?"
+    severity: medium
+  - id: FN04
+    question: "On decryption failure, does the UI show '[Encrypted]' or similar placeholder — NOT the raw ciphertext or 'encrypted.ext'?"
+    severity: high
+  - id: FN05
+    question: "Is the filename decryption cache using strict equality checks (=== undefined or ?? undefined), not || which treats empty string as falsy?"
+    severity: high
+  - id: FN06
+    question: "Does the filename length in ciphertext leak information about the original filename length? (Is padding applied?)"
+    severity: medium
+  - id: FN07
+    question: "Are filenames decrypted client-side only, never on the server?"
+    severity: critical

@@ -1,0 +1,145 @@
+rules:
+  - id: jwt-no-verify
+    pattern: |
+      jwt.decode($TOKEN, ...)
+    message: "JWT decoded without verification — use jwt.verify() to validate signature"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-347"
+      checklist_map: "JWT01"
+
+  - id: jwt-algorithm-none
+    pattern: |
+      { ..., algorithm: 'none', ... }
+    message: "JWT algorithm 'none' — disables signature verification entirely"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-347"
+      checklist_map: "JWT02"
+    paths:
+      include:
+        - "**/auth*.ts"
+        - "**/jwt*.ts"
+
+  - id: jwt-weak-algorithm
+    patterns:
+      - pattern: |
+          { ..., algorithm: "$ALG", ... }
+      - metavariable-regex:
+          metavariable: $ALG
+          regex: "^(HS256|RS256)$"
+    message: "Weak JWT algorithm $ALG — prefer ES256 or EdDSA for new implementations"
+    severity: INFO
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-327"
+    paths:
+      include:
+        - "**/auth*.ts"
+        - "**/jwt*.ts"
+
+  - id: timing-attack-string-compare
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $TOKEN === $OTHER
+        - pattern: |
+            $TOKEN == $OTHER
+        - pattern: |
+            $TOKEN !== $OTHER
+      - metavariable-regex:
+          metavariable: $TOKEN
+          regex: "(?i)(token|hash|digest|hmac|signature|mac|secret)"
+    message: "String comparison of security token — use constant-time comparison (timingSafeEqual)"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-208"
+      checklist_map: "AUTH03"
+
+  - id: session-fixation
+    patterns:
+      - pattern: |
+          $REQ.session.$KEY = ...
+      - pattern-not-inside: |
+          ...
+          $REQ.session.regenerate(...)
+          ...
+    message: "Session value set without session.regenerate() — potential session fixation"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-384"
+      checklist_map: "AUTH04"
+
+  - id: password-in-query
+    pattern: |
+      $QUERY = `... $PASSWORD ...`
+    message: "Password included in query string — may be logged in server logs or browser history"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-598"
+    paths:
+      include:
+        - "**/auth*.ts"
+
+  - id: bcrypt-low-rounds
+    patterns:
+      - pattern: |
+          bcrypt.hash($PASS, $ROUNDS)
+      - metavariable-comparison:
+          metavariable: $ROUNDS
+          comparison: $ROUNDS < 12
+    message: "bcrypt cost factor $ROUNDS too low — use at least 12"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-916"
+
+  - id: opaque-missing-server-verify
+    patterns:
+      - pattern: |
+          opaque.clientFinish(...)
+      - pattern-not-inside: |
+          ...
+          opaque.serverFinish(...)
+          ...
+    message: "OPAQUE client finish without server finish — both sides must complete the exchange"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-287"
+      checklist_map: "OP01"
+
+  - id: totp-window-too-large
+    patterns:
+      - pattern: |
+          { ..., window: $WIN, ... }
+      - metavariable-comparison:
+          metavariable: $WIN
+          comparison: $WIN > 2
+    message: "TOTP verification window $WIN is too large — increases brute force surface"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-308"
+      checklist_map: "MFA03"
+    paths:
+      include:
+        - "**/mfa*.ts"
+        - "**/totp*.ts"
+
+  - id: cookie-no-httponly
+    patterns:
+      - pattern: |
+          res.cookie($NAME, $VALUE, { ... })
+      - pattern-not: |
+          res.cookie($NAME, $VALUE, { ..., httpOnly: true, ... })
+    message: "Cookie set without httpOnly flag — vulnerable to XSS-based session theft"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-1004"

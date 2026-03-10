@@ -1,0 +1,173 @@
+rules:
+  - id: key-in-localstorage
+    patterns:
+      - pattern-either:
+        - pattern: |
+            localStorage.setItem($KEY, $VALUE)
+        - pattern: |
+            sessionStorage.setItem($KEY, $VALUE)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: "(?i)(key|secret|password|token|private|master)"
+    message: "Sensitive data stored in localStorage/sessionStorage — vulnerable to XSS"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-922"
+      checklist_map: "DS01"
+
+  - id: key-in-localstorage-raw
+    patterns:
+      - pattern-either:
+        - pattern: |
+            localStorage.setItem("...", $SENSITIVE)
+        - pattern: |
+            localStorage[$KEY] = $SENSITIVE
+      - metavariable-regex:
+          metavariable: $SENSITIVE
+          regex: "(?i)(masterKey|secretKey|privateKey|encryptionKey)"
+    message: "CryptoKey or key material stored in localStorage — must be in non-extractable CryptoKey or IndexedDB"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-922"
+      checklist_map: "DS01"
+
+  - id: plaintext-in-response
+    patterns:
+      - pattern-either:
+        - pattern: |
+            res.json({ ..., $KEY: $VALUE, ... })
+        - pattern: |
+            res.send({ ..., $KEY: $VALUE, ... })
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: "(?i)(password|secret|key|token|plaintext|decrypted)"
+    message: "Sensitive field '$KEY' in API response — may expose secrets to client"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-200"
+      checklist_map: "DS02"
+
+  - id: missing-csp-header
+    patterns:
+      - pattern: |
+          app.use(helmet(...))
+      - pattern-not: |
+          app.use(helmet({ ..., contentSecurityPolicy: ..., ... }))
+    message: "Helmet used without explicit CSP configuration — set contentSecurityPolicy"
+    severity: INFO
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-693"
+      checklist_map: "DS03"
+
+  - id: presigned-url-long-expiry
+    patterns:
+      - pattern: |
+          { ..., expiresIn: $EXPIRY, ... }
+      - metavariable-comparison:
+          metavariable: $EXPIRY
+          comparison: $EXPIRY > 3600
+    message: "Presigned URL expiry $EXPIRY seconds (>1 hour) — use shortest viable expiry"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-613"
+      checklist_map: "DF01"
+    paths:
+      include:
+        - "**/s3*.ts"
+        - "**/storage*.ts"
+        - "**/files/*.ts"
+
+  - id: unencrypted-redis-key
+    patterns:
+      - pattern-either:
+        - pattern: |
+            redis.set($KEY, $PLAINTEXT)
+        - pattern: |
+            $REDIS.set($KEY, $PLAINTEXT)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: "(?i)(key|secret|token|password)"
+    message: "Sensitive data stored in Redis without encryption — encrypt before caching"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-312"
+      checklist_map: "DF03"
+
+  - id: cors-wildcard
+    pattern: |
+      { ..., origin: '*', ... }
+    message: "CORS origin set to wildcard '*' — restrict to specific origins"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-942"
+
+  - id: file-path-traversal
+    patterns:
+      - pattern-either:
+        - pattern: |
+            path.join(..., $USER_INPUT, ...)
+        - pattern: |
+            `${...}/${$USER_INPUT}`
+      - pattern-inside: |
+          $APP.$METHOD($PATH, ...)
+    message: "User input in file path — validate to prevent directory traversal"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-22"
+
+  - id: base64-key-decode
+    pattern: |
+      Buffer.from($KEY, 'base64')
+    message: "Key decoded from Base64 — verify key material is not stored as plaintext Base64 string"
+    severity: INFO
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-312"
+    paths:
+      include:
+        - "**/crypto*.ts"
+        - "**/key*.ts"
+
+  - id: private-key-in-env
+    pattern: |
+      process.env.$KEY
+    message: "Reading from env var — ensure private keys/secrets are not stored in environment variables in production"
+    severity: INFO
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-798"
+    paths:
+      include:
+        - "**/crypto*.ts"
+        - "**/auth*.ts"
+
+  - id: webrtc-no-dtls
+    patterns:
+      - pattern: |
+          new RTCPeerConnection($CONFIG)
+      - pattern-not: |
+          new RTCPeerConnection({ ..., iceTransportPolicy: 'relay', ... })
+    message: "WebRTC connection without explicit transport policy — ensure DTLS is enforced"
+    severity: INFO
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-319"
+      checklist_map: "P2P01"
+
+  - id: sql-injection-template
+    pattern: |
+      $DB.query(`... ${$INPUT} ...`)
+    message: "SQL query with template literal interpolation — use parameterized queries"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-89"
+      checklist_map: "VI01"

@@ -1,0 +1,32 @@
+[
+  {
+    "pattern": "deriveChunkIV",
+    "file_glob": "**/fileCrypto.ts",
+    "suppress_checklist": "C03",
+    "reason": "deriveChunkIV uses HKDF with fileId+chunkIndex — IV uniqueness is guaranteed by design"
+  },
+  {
+    "pattern": "encryptionSalt:\\s*['\"]\\s*['\"]",
+    "file_glob": "**/*.ts",
+    "suppress_checklist": "KD05",
+    "reason": "Empty encryptionSalt is valid for V3/V4 — actual salt is embedded in the CVEF header"
+  },
+  {
+    "pattern": "encryptLargeSecretKey",
+    "file_glob": "**/masterKeyCrypto.ts",
+    "suppress_checklist": "PQ01",
+    "reason": "ML-KEM-768 2400B keys correctly use AES-GCM via encryptLargeSecretKey, not AES-KW"
+  },
+  {
+    "pattern": "cloudvault_recovery_code_salt_v1",
+    "file_glob": "**/encryption*.ts",
+    "suppress_checklist": "KD05",
+    "reason": "Recovery code salt is intentionally hardcoded — it's a domain separator, not a per-user salt"
+  },
+  {
+    "pattern": "extractable:\\s*true",
+    "file_glob": "**/masterKeyCrypto.ts",
+    "suppress_checklist": "KL12",
+    "reason": "Master key must be extractable to wrap/unwrap with AES-KW — this is by design"
+  }
+]

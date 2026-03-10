@@ -1,0 +1,17 @@
+# Output directories
+reports/
+triage-db/
+models/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

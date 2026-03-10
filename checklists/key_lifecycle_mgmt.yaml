@@ -1,0 +1,39 @@
+checklist_id: key_mgmt_lifecycle
+stage: key_lifecycle
+items:
+  - id: KL01
+    question: "Is the Master Key generated using crypto.getRandomValues (32 bytes), not derived directly from the password?"
+    severity: critical
+  - id: KL02
+    question: "Is the Master Key wrapped (AES-KW) with the KEK before being sent to or stored on the server?"
+    severity: critical
+  - id: KL03
+    question: "Is the unwrapped Master Key NEVER sent to the server in plaintext?"
+    severity: critical
+  - id: KL04
+    question: "When the user changes their password, is the Master Key re-wrapped with the new KEK and the new wrapped key stored on the server?"
+    severity: critical
+  - id: KL05
+    question: "After auto-lock timeout, is the unwrapped Master Key cleared from memory/sessionStorage?"
+    severity: high
+  - id: KL06
+    question: "Is the KEK (Key Encryption Key) cleared from memory immediately after wrapping/unwrapping the Master Key?"
+    severity: high
+  - id: KL07
+    question: "For UES: does device approval generate a fresh UES for the NEW device without overwriting the approving device's UES?"
+    severity: critical
+  - id: KL08
+    question: "For UES: is the Device-KEK derived from BOTH the password AND the UES (dual-KEK), not just one?"
+    severity: critical
+  - id: KL09
+    question: "Is the fast-path (UES cached locally) with a fallback to slow-path (password-only) if unwrap fails?"
+    severity: high
+  - id: KL10
+    question: "Does the wrapped Master Key (masterKeyEncrypted) stored server-side use a per-user unique salt/IV?"
+    severity: high
+  - id: KL11
+    question: "Is there a migration path for legacy users who had KEK cached as Master Key? (migrateToKeyWrapping)"
+    severity: medium
+  - id: KL12
+    question: "Are all CryptoKey objects created with extractable: false where possible (non-exportable from WebCrypto)?"
+    severity: medium

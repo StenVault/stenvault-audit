@@ -1,0 +1,18 @@
+checklist_id: auth_opaque
+stage: auth
+items:
+  - id: OP01
+    question: "Is OPAQUE server setup loaded from environment variable (OPAQUE_SERVER_SETUP), not hardcoded?"
+    severity: critical
+  - id: OP02
+    question: "Does the server ever receive, log, or store the user's plaintext password at any point in the flow?"
+    severity: critical
+  - id: OP03
+    question: "Are OPAQUE registration and login flows using the standard 3-message protocol (not a custom shortcut)?"
+    severity: high
+  - id: OP04
+    question: "Is the OPAQUE credential file stored server-side only (not sent to or accessible by client)?"
+    severity: critical
+  - id: OP05
+    question: "Does the OPAQUE login flow return the same error for 'user not found' and 'wrong password'? (Prevents user enumeration)"
+    severity: high

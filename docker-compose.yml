@@ -1,0 +1,57 @@
+# CloudVault Crypto Audit Pipeline
+# Ollama runs on the HOST (already has GPU + models)
+# Containers connect via host.docker.internal:11434
+
+services:
+  ast-parser:
+    build:
+      context: ./ast-parser
+      dockerfile: Dockerfile
+    container_name: audit-ast-parser
+    volumes:
+      - /d/Projects/Cloud/vault:/codebase:ro    # CloudVault source (read-only)
+      - ./checklists:/checklists:ro              # Checklist YAMLs
+      - ./reports:/reports                       # Output findings
+      - ./design-docs:/design-docs:ro            # Design docs for context enrichment
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - MODEL=deepseek-r1:7b
+      - MODELS=${MODELS:-deepseek-r1:7b}
+      - MODEL_CONFIGS=${MODEL_CONFIGS:-{}}
+      - RUNS_PER_CHUNK=3
+      - MAX_CHUNK_LINES=200
+      - ENABLE_DEPGRAPH=${ENABLE_DEPGRAPH:-true}
+      - ENABLE_SEMGREP=${ENABLE_SEMGREP:-true}
+      - ENABLE_ADVERSARIAL=${ENABLE_ADVERSARIAL:-true}
+      - ENABLE_FEW_SHOT=${ENABLE_FEW_SHOT:-true}
+      - DESIGN_DOCS_DIR=/design-docs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - audit-net
+
+  triage:
+    build:
+      context: ./triage
+      dockerfile: Dockerfile
+    container_name: audit-triage
+    volumes:
+      - ./reports:/reports                       # Input: raw findings from ast-parser
+      - ./design-docs:/design-docs:ro            # CLAUDE.md, NEW_DAY.md, etc.
+      - ./triage-db:/triage-db                   # ChromaDB persistent storage
+      - ./whitelist:/whitelist:ro                 # Known-good patterns
+      - ./models:/models                         # Trained classifier (future)
+      - /d/Projects/Cloud/vault:/codebase:ro     # Codebase for AST evidence verification
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - EMBEDDING_MODEL=nomic-embed-text
+      - REJECTION_THRESHOLD=0.35
+      - CODEBASE_ROOT=/codebase
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - audit-net
+
+networks:
+  audit-net:
+    driver: bridge

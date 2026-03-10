@@ -1,0 +1,133 @@
+rules:
+  - id: hardcoded-crypto-key
+    patterns:
+      - pattern: |
+          crypto.subtle.importKey('raw', new TextEncoder().encode("..."), ...)
+    message: "Hardcoded string used as cryptographic key material — keys must be derived or randomly generated"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-321"
+      checklist_map: "C05"
+
+  - id: math-random-key
+    patterns:
+      - pattern: |
+          Math.random()
+      - pattern-inside: |
+          $KEY = ...
+          ...
+          crypto.subtle.importKey(..., $KEY, ...)
+    message: "Key material derived from Math.random() — must use crypto.getRandomValues() or KDF"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-338"
+      checklist_map: "C05"
+
+  - id: weak-key-length-128
+    patterns:
+      - pattern: |
+          { name: 'AES-GCM', length: $LEN }
+      - metavariable-comparison:
+          metavariable: $LEN
+          comparison: $LEN < 256
+    message: "AES key length $LEN bits — CloudVault requires 256-bit keys"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-326"
+      checklist_map: "C05"
+
+  - id: password-as-key-direct
+    pattern: |
+      crypto.subtle.importKey('raw', new TextEncoder().encode($PASSWORD), ...)
+    message: "Password used directly as key without KDF — must use Argon2id or PBKDF2"
+    severity: ERROR
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-916"
+      checklist_map: "KD01"
+
+  - id: key-in-variable-name-secret
+    pattern: |
+      const $KEY = "..."
+    message: "String literal assigned to variable — check if this is a hardcoded secret"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-798"
+      checklist_map: "C05"
+    paths:
+      include:
+        - "**/crypto*.ts"
+        - "**/key*.ts"
+        - "**/masterKey*.ts"
+
+  - id: extractable-key-no-wrap
+    patterns:
+      - pattern: |
+          crypto.subtle.generateKey($ALGO, true, $USAGES)
+      - pattern-not-inside: |
+          ...
+          crypto.subtle.wrapKey(...)
+          ...
+    message: "CryptoKey generated with extractable=true but no wrapKey call found — key may leak"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-311"
+      checklist_map: "KL12"
+
+  - id: key-export-raw
+    pattern: |
+      crypto.subtle.exportKey('raw', $KEY)
+    message: "Raw key export — ensure exported key material is immediately wrapped or encrypted"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-311"
+      checklist_map: "KL05"
+
+  - id: key-not-cleared
+    patterns:
+      - pattern: |
+          const $KEY = await crypto.subtle.exportKey('raw', ...)
+      - pattern-not-inside: |
+          ...
+          $KEY.fill(0)
+          ...
+    message: "Exported key material not zeroed after use — sensitive data may persist in memory"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-316"
+      checklist_map: "KL08"
+
+  - id: pbkdf2-low-iterations
+    patterns:
+      - pattern: |
+          { name: 'PBKDF2', ..., iterations: $ITER, ... }
+      - metavariable-comparison:
+          metavariable: $ITER
+          comparison: $ITER < 100000
+    message: "PBKDF2 iterations $ITER is too low — minimum 600,000 recommended"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-916"
+      checklist_map: "KD02"
+
+  - id: argon2-low-memory
+    patterns:
+      - pattern: |
+          argon2id({..., memoryCost: $MEM, ...})
+      - metavariable-comparison:
+          metavariable: $MEM
+          comparison: $MEM < 65536
+    message: "Argon2id memory cost too low ($MEM KB) — minimum 64MB recommended"
+    severity: WARNING
+    languages: [typescript, javascript]
+    metadata:
+      cwe: "CWE-916"
+      checklist_map: "KD02"
