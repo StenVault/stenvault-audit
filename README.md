@@ -2,7 +2,7 @@
 
 An automated security audit pipeline that uses **tree-sitter AST parsing**, **cryptographic data flow tracing**, and **LLM-based analysis with 3-layer false positive triage** to find real vulnerabilities in TypeScript codebases — running entirely on local hardware.
 
-Built to audit [CloudVault](https://codeberg.org/Kanano/vault) (180K+ lines, AES-256-GCM, Argon2id, X25519 + ML-KEM-768, OPAQUE, Shamir), but the architecture is applicable to any codebase with security-critical code.
+Built to audit [CloudVault](https://github.com/Gefson-costa/cloudvault) (180K+ lines, AES-256-GCM, Argon2id, X25519 + ML-KEM-768, OPAQUE, Shamir), but the architecture is applicable to any codebase with security-critical code.
 
 ## Why This Exists
 
@@ -155,6 +155,6 @@ Rebuild and run: `bash run.sh build && bash run.sh audit crypto`
 
 | Project | Purpose |
 |---------|---------|
-| [CloudVault](https://codeberg.org/Kanano/vault) | Zero-knowledge encrypted cloud storage (180K+ lines) |
-| [CloudVault RAG](https://codeberg.org/Kanano/cloudvault-rag) | Navigate and query the codebase locally |
+| [CloudVault](https://github.com/Gefson-costa/cloudvault) | Zero-knowledge encrypted cloud storage (180K+ lines) |
+| [CloudVault RAG](https://github.com/Gefson-costa/cloudvault-rag) | Navigate and query the codebase locally |
 | **CloudVault Audit** (this repo) | Automated security audit pipeline with AST parsing |
