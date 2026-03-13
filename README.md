@@ -1,8 +1,8 @@
-# CloudVault Audit — AI-Powered Security Audit Pipeline
+# StenVault Audit — AI-Powered Security Audit Pipeline
 
-An automated security audit pipeline that uses **tree-sitter AST parsing**, **cryptographic data flow tracing**, and **LLM-based analysis with 3-layer false positive triage** to find real vulnerabilities in TypeScript codebases — running entirely on local hardware.
+> Part of the StenVault ecosystem — [stenvault](https://github.com/Gefson-costa/stenvault) · [stenvault-rag](https://github.com/Gefson-costa/stenvault-rag)
 
-Built to audit [CloudVault](https://github.com/Gefson-costa/cloudvault) — a zero-knowledge encrypted storage platform with post-quantum cryptography — but applicable to any codebase with security-critical code.
+Local AI security audit pipeline for cryptographic codebases — tree-sitter AST parsing + DeepSeek R1 with 3-layer false positive triage. Runs 100% locally, no code leaves your machine.
 
 ## Why This Exists
 
@@ -119,7 +119,7 @@ Reports in `./reports/` as JSON:
 ## Project Structure
 
 ```
-cloudvault-audit/
+stenvault-audit/
 ├── run.sh                  # Main command interface
 ├── docker-compose.yml      # 2 containers: ast-parser + triage
 ├── ast-parser/             # Container 1: Audit engine
@@ -151,10 +151,10 @@ items:
 
 Rebuild and run: `bash run.sh build && bash run.sh audit crypto`
 
-## Part of the CloudVault Ecosystem
+## Part of the StenVault Ecosystem
 
 | Project | Purpose |
 |---------|---------|
-| [CloudVault](https://github.com/Gefson-costa/cloudvault) | Zero-knowledge encrypted cloud storage |
-| [CloudVault RAG](https://github.com/Gefson-costa/cloudvault-rag) | Navigate and query the codebase locally |
-| **CloudVault Audit** (this repo) | Automated security audit pipeline with AST parsing |
+| [StenVault](https://github.com/Gefson-costa/stenvault) | Zero-knowledge encrypted cloud storage |
+| [StenVault RAG](https://github.com/Gefson-costa/stenvault-rag) | Navigate and query the codebase locally |
+| **StenVault Audit** (this repo) | Automated security audit pipeline with AST parsing |
