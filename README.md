@@ -1,65 +1,61 @@
-# StenVault Audit — AI-Powered Security Audit Pipeline
+# StenVault Audit
+
+Local AI security audit pipeline for cryptographic codebases. Tree-sitter AST parsing, crypto data flow tracing, DeepSeek R1 analysis with 3-layer false positive triage. Runs in Docker, no code leaves your machine.
 
 > Part of the StenVault ecosystem — [stenvault](https://github.com/Gefson-costa/stenvault) · [stenvault-rag](https://github.com/Gefson-costa/stenvault-rag)
 
-Local AI security audit pipeline for cryptographic codebases — tree-sitter AST parsing + DeepSeek R1 with 3-layer false positive triage. Runs 100% locally, no code leaves your machine.
+## Problem
 
-## Why This Exists
+Small LLMs (7B parameters) hallucinate when auditing code. They flag intentional design decisions as bugs and fabricate code that doesn't exist. Raw LLM output on a cryptographic codebase is mostly noise.
 
-Cloud-based AI can audit code, but it requires sending proprietary source code to third-party servers. This pipeline runs **100% locally** using Docker + Ollama, keeping your code private while providing structured, repeatable security audits with precise file/line coordinates.
+This pipeline fixes that with pre-processing (AST extraction + crypto data flow tracing) and post-processing (3-layer triage). The LLM receives structured context instead of raw source, and its output goes through automated validation before reaching you.
 
-The core problem: small LLMs (7B parameters) hallucinate. They flag intentional design decisions as bugs and fabricate code that doesn't exist. This pipeline solves that with **pre-processing** (AST + data flow) and **post-processing** (3-layer triage).
-
-## Architecture
+## Pipeline
 
 ```
-TypeScript Source Code
+TypeScript source
 │
-├── 1. Tree-sitter AST Parser
-│      Extracts functions, builds call graph, groups connected components
+├── 1. Tree-sitter AST parser
+│      Function extraction, call graph, connected components
 │      Chunks at function boundaries (never mid-function)
 │
-├── 2. Crypto Data Flow Tracer
-│      Traces IVs, keys, salts backwards to their origin
-│      Classifies: CRYPTO_RANDOM, DERIVED, PARAMETER, HARDCODED
+├── 2. Crypto data flow tracer
+│      Traces IVs, keys, salts backwards to origin
+│      Classifies: CRYPTO_RANDOM | DERIVED | PARAMETER | HARDCODED
 │
-├── 3. Prompt Builder
-│      Combines: code chunk + data flow traces + security checklist
-│      Binary yes/no questions — reduces LLM reasoning burden
+├── 3. Prompt builder
+│      Code chunk + data flow traces + security checklist
+│      Binary yes/no questions to reduce LLM reasoning burden
 │
-├── 4. DeepSeek R1 Analysis (3 runs at temps 0.1, 0.3, 0.5)
-│      Cross-validation: same finding in 3/3 runs = high confidence
-│      Consensus scoring eliminates hallucinations
+├── 4. DeepSeek R1 analysis (3 runs at temps 0.1, 0.3, 0.5)
+│      Consensus scoring: 3/3 = high confidence, 1/3 = likely hallucination
 │
-└── 5. Triage Pipeline (3 layers)
-       ├── Layer 1: Auto-filter (rule-based)
-       │   No checklist item? Line out of bounds? Evidence not in source? → Rejected
-       │
-       ├── Layer 2: Embedding similarity (nomic-embed-text + ChromaDB)
-       │   Compare finding against design docs — if it matches a documented
-       │   decision → false positive → Rejected
-       │
-       └── Layer 3: Whitelist (pattern matching)
-           Known-good patterns with file globs → Suppressed
+└── 5. Triage (3 layers)
+       ├── Auto-filter: no checklist item? line out of bounds? evidence not in source? → rejected
+       ├── Embedding similarity: finding matches documented design decision? → false positive
+       └── Whitelist: known-good pattern with file glob match? → suppressed
 ```
 
-### Key Design Decisions
+## Why tree-sitter instead of regex
 
-| Decision | Why |
-|----------|-----|
-| **Tree-sitter instead of regex** | Regex can't track where a function ends in nested code. For cryptography, ~90% coverage isn't enough — we need exact data flow from IV origin to encryption call |
-| **Pre-computed data flow traces** | A 7B model can't reliably trace `iv → deriveChunkIV → HKDF → baseIV` across 200 lines. Pre-computing reduces the task to "is CRYPTO_RANDOM safe for an IV?" — a simple binary check |
-| **3 runs with different temperatures** | Cross-validation: if 3/3 runs find the same issue, it's likely real. If only 1/3 finds it, it's likely a hallucination. Consensus scoring (1.0 / 0.67 / 0.33) provides confidence levels |
-| **Embedding triage against design docs** | The LLM flags `deriveChunkIV` as "IV reuse risk". But CLAUDE.md documents this as intentional (HKDF with fileId+chunkIndex). Embedding similarity detects this match and suppresses the false positive |
-| **Docker isolation** | Audit pipeline has different dependencies (tree-sitter, chromadb) than the target codebase (Node.js). Docker prevents conflicts. Codebase mounted read-only — the audit can never modify your code |
-| **Ollama on host, not in Docker** | GPU passthrough to Docker on Windows requires extra setup. Simpler to connect from containers via `host.docker.internal` |
+Regex can't reliably track where a function ends in nested code. For cryptography, approximate coverage isn't useful — you need exact data flow from IV origin to encryption call. Tree-sitter gives you a real AST.
+
+The data flow tracer pre-computes paths like `iv → deriveChunkIV → HKDF → baseIV` so the LLM doesn't have to. A 7B model can't reliably trace variable origins across 200 lines. But it can answer "is CRYPTO_RANDOM safe for an IV?" — that's a binary check it handles well.
+
+## Why 3 runs at different temperatures
+
+Cross-validation. If all 3 runs flag the same issue, it's probably real. If only 1 of 3 finds it, it's probably a hallucination. Consensus scores (1.0 / 0.67 / 0.33) give you confidence levels to prioritize triage.
+
+## Why embedding triage
+
+The LLM flags `deriveChunkIV` as "IV reuse risk". But the design docs describe this as intentional — HKDF with fileId + chunkIndex as context. Embedding similarity between the finding and the design docs catches this and suppresses the false positive automatically.
 
 ## Coverage
 
-**15 YAML checklists, 98 security items across 9 domains:**
+15 YAML checklists, 98 security items across 9 domains:
 
-| Domain | Items | What it checks |
-|--------|:-----:|---------------|
+| Domain | Items | Checks |
+|--------|:-----:|--------|
 | `crypto` | 29 | AES-GCM IVs, key derivation, ML-KEM-768 parameters |
 | `signatures` | 8 | Ed25519 + ML-DSA-65 verification, key sizes |
 | `key_lifecycle` | 12 | Master Key generation, wrapping, zeroing, rotation |
@@ -72,32 +68,33 @@ TypeScript Source Code
 
 ## Requirements
 
-- **Docker Desktop** (running)
-- **Ollama** with `deepseek-r1:7b` and `nomic-embed-text` models
+- Docker Desktop (running)
+- Ollama with `deepseek-r1:7b` and `nomic-embed-text`
 - ~4GB VRAM minimum
 
-## Quick Start
+Ollama runs on the host, not in Docker. GPU passthrough to Docker on Windows requires extra setup; connecting via `host.docker.internal` is simpler. The codebase is mounted read-only — the audit cannot modify your code.
+
+## Usage
 
 ```bash
 # Full audit (all 9 domains, 30-90 min)
 bash run.sh full
 
-# Single domain (5-15 min)
+# Single domain
 bash run.sh audit crypto
 bash run.sh audit auth
-bash run.sh audit signatures
 
-# Combine domains
+# Multiple domains
 bash run.sh audit crypto auth
 
-# Run triage on results
-bash run.sh triage-init    # First time: index design docs
-bash run.sh triage         # Filter false positives
+# Triage
+bash run.sh triage-init    # first time: index design docs
+bash run.sh triage         # filter false positives
 ```
 
 ## Output
 
-Reports in `./reports/` as JSON:
+JSON reports in `./reports/`:
 
 ```json
 {
@@ -114,30 +111,30 @@ Reports in `./reports/` as JSON:
 }
 ```
 
-**Priority:** `validated` + `critical` first, then `high`, then `medium`. Ignore `rejected` and `whitelisted`.
+Prioritize `validated` + `critical` first. Ignore `rejected` and `whitelisted`.
 
-## Project Structure
+## Structure
 
 ```
 stenvault-audit/
-├── run.sh                  # Main command interface
-├── docker-compose.yml      # 2 containers: ast-parser + triage
-├── ast-parser/             # Container 1: Audit engine
-│   ├── src/parser.py       #   Tree-sitter AST extraction + call graph
-│   ├── src/data_flow.py    #   Crypto variable origin tracing
-│   └── src/prompt_builder.py   # Prompt formatting for DeepSeek
-├── triage/                 # Container 2: False positive filter
-│   ├── src/auto_filter.py  #   Layer 1: rule-based checks
-│   ├── src/embedding_triage.py  # Layer 2: design doc similarity
-│   └── src/whitelist.py    #   Layer 3: pattern suppression
-├── checklists/             # 15 YAML files, 98 security items
-├── whitelist/              # Known-good patterns to suppress
-├── design-docs/            # Design documentation for triage comparison
-├── dashboard/              # Web dashboard for viewing results
-└── reports/                # Output: JSON audit reports
+├── run.sh                          Entry point
+├── docker-compose.yml              2 containers: ast-parser + triage
+├── ast-parser/
+│   ├── src/parser.py               Tree-sitter AST extraction + call graph
+│   ├── src/data_flow.py            Crypto variable origin tracing
+│   └── src/prompt_builder.py       Prompt formatting
+├── triage/
+│   ├── src/auto_filter.py          Layer 1: rule-based rejection
+│   ├── src/embedding_triage.py     Layer 2: design doc similarity
+│   └── src/whitelist.py            Layer 3: pattern suppression
+├── checklists/                     15 YAML files, 98 security items
+├── whitelist/                      Known-good patterns
+├── design-docs/                    Design documentation for triage
+├── dashboard/                      Web UI for viewing results
+└── reports/                        JSON output
 ```
 
-## Adding Custom Checklists
+## Custom checklists
 
 ```yaml
 # checklists/my_domain.yaml
@@ -151,10 +148,10 @@ items:
 
 Rebuild and run: `bash run.sh build && bash run.sh audit crypto`
 
-## Part of the StenVault Ecosystem
+## Ecosystem
 
 | Project | Purpose |
 |---------|---------|
-| [StenVault](https://github.com/Gefson-costa/stenvault) | Zero-knowledge encrypted cloud storage |
-| [StenVault RAG](https://github.com/Gefson-costa/stenvault-rag) | Navigate and query the codebase locally |
-| **StenVault Audit** (this repo) | Automated security audit pipeline with AST parsing |
+| [StenVault](https://github.com/Gefson-costa/stenvault) | Zero-knowledge encrypted cloud storage (open-source client) |
+| [StenVault RAG](https://github.com/Gefson-costa/stenvault-rag) | Local codebase search and Q&A |
+| **StenVault Audit** (this repo) | Automated security audit pipeline |
