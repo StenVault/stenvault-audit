@@ -83,8 +83,62 @@ case "$COMMAND" in
     ls -la ./reports/*.json 2>/dev/null | tail -5
     ;;
 
+  adversarial)
+    echo "=== ADVERSARIAL TESTING ==="
+    echo "Starting full StenVault stack + attack suite..."
+    echo ""
+    docker compose -f adversarial/docker-compose.yml build
+    echo ""
+    echo "Running attacks (this takes 5-15 min)..."
+    docker compose -f adversarial/docker-compose.yml up \
+      --abort-on-container-exit \
+      --exit-code-from nuclei 2>&1 | tee adversarial/reports/run-$(date +%Y%m%d_%H%M%S).log
+    echo ""
+    echo "=== ADVERSARIAL COMPLETE ==="
+    echo "Reports in adversarial/reports/"
+    ls -la adversarial/reports/*.json 2>/dev/null | tail -5
+    ;;
+
+  adversarial-up)
+    echo "Starting StenVault stack (stays running for manual testing)..."
+    docker compose -f adversarial/docker-compose.yml up -d app db redis minio minio-init
+    echo ""
+    echo "App: http://localhost:3000"
+    echo "MinIO Console: http://localhost:9001 (minioadmin/minioadmin)"
+    echo "PostgreSQL: localhost:5433"
+    echo "Redis: localhost:6380"
+    echo ""
+    echo "Run attacks manually:"
+    echo "  docker compose -f adversarial/docker-compose.yml run --rm nuclei"
+    echo "  docker compose -f adversarial/docker-compose.yml run --rm race-tester"
+    echo ""
+    echo "Stop: docker compose -f adversarial/docker-compose.yml down"
+    ;;
+
+  adversarial-chaos)
+    echo "=== CHAOS ENGINEERING ==="
+    docker compose -f adversarial/docker-compose.yml build chaos-tester
+    docker compose -f adversarial/docker-compose.yml up -d app db redis minio minio-init toxiproxy toxiproxy-init
+    echo "Waiting for stack..."
+    sleep 10
+    docker compose -f adversarial/docker-compose.yml run --rm chaos-tester
+    echo "Reports in adversarial/reports/"
+    ;;
+
+  adversarial-fuzz)
+    DURATION=${1:-300}
+    echo "=== LONG-RUNNING FUZZER (${DURATION}s) ==="
+    FUZZ_DURATION=$DURATION docker compose -f adversarial/docker-compose.yml run --rm fuzzer
+    ;;
+
+  adversarial-down)
+    echo "Stopping adversarial stack..."
+    docker compose -f adversarial/docker-compose.yml down -v
+    echo "Done."
+    ;;
+
   help|*)
-    echo "CloudVault Crypto Audit Pipeline"
+    echo "StenVault Audit Pipeline"
     echo ""
     echo "Usage: ./run.sh <command> [args]"
     echo ""
@@ -98,6 +152,13 @@ case "$COMMAND" in
     echo "  depgraph             Build and display dependency graph only"
     echo "  semgrep              Run Semgrep standalone (deterministic SAST, no LLM)"
     echo "  dashboard            Open web dashboard (http://localhost:7800)"
+    echo ""
+    echo "Adversarial (live attack simulation):"
+    echo "  adversarial          Full attack: build stack, seed, Nuclei + race tester"
+    echo "  adversarial-up       Start stack only (for manual testing / Burp)"
+    echo "  adversarial-chaos    Run chaos engineering (Toxiproxy kills Redis/DB)"
+    echo "  adversarial-fuzz [s] Run Nuclei in loop for N seconds (default 300)"
+    echo "  adversarial-down     Stop and cleanup adversarial stack"
     echo ""
     echo "Feature flags (env vars):"
     echo "  ENABLE_DEPGRAPH=true|false   Cross-file dependency graph (default: true)"

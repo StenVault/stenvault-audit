@@ -1,16 +1,33 @@
 # StenVault Audit
 
-Local AI security audit pipeline for cryptographic codebases. Tree-sitter AST parsing, crypto data flow tracing, DeepSeek R1 analysis with 3-layer false positive triage. Runs in Docker, no code leaves your machine.
+Security audit and adversarial testing pipeline for the StenVault codebase. Two modules: static analysis via LLM-assisted code review, and live adversarial testing against a running instance.
 
 > Part of the StenVault ecosystem — [stenvault](https://github.com/Gefson-costa/stenvault) · [stenvault-rag](https://github.com/Gefson-costa/stenvault-rag)
 
-## Problem
+---
 
-Small LLMs (7B parameters) hallucinate when auditing code. They flag intentional design decisions as bugs and fabricate code that doesn't exist. Raw LLM output on a cryptographic codebase is mostly noise.
+## Modules
 
-This pipeline fixes that with pre-processing (AST extraction + crypto data flow tracing) and post-processing (3-layer triage). The LLM receives structured context instead of raw source, and its output goes through automated validation before reaching you.
+### Static Analysis (`ast-parser/` + `triage/`)
 
-## Pipeline
+Tree-sitter AST parsing, crypto data flow tracing, DeepSeek R1 analysis with 3-layer false positive triage. Reads code, does not execute it.
+
+### Adversarial Testing (`adversarial/`)
+
+Deploys the full StenVault stack in Docker (application, database, cache, object storage) and attacks it with automated tooling. The application runs from its production image and is not aware it is being tested.
+
+| Tool | Function |
+|------|----------|
+| Nuclei | Custom YAML templates targeting each tRPC endpoint. Auth bypass, IDOR, rate limit enforcement, injection, header validation, CORS, session manipulation. |
+| Race harness | 50 concurrent requests against critical endpoints. Double registration, brute force, CSRF bypass. |
+| Toxiproxy | Infrastructure failure injection. Redis kill, database latency, connection resets. Validates fail-closed behavior. |
+| Fuzzer | Nuclei in continuous loop for extended duration testing. |
+
+Both modules run in Docker. No code or traffic leaves the local machine.
+
+---
+
+## Static Analysis Pipeline
 
 ```
 TypeScript source
@@ -31,26 +48,10 @@ TypeScript source
 │      Consensus scoring: 3/3 = high confidence, 1/3 = likely hallucination
 │
 └── 5. Triage (3 layers)
-       ├── Auto-filter: no checklist item? line out of bounds? evidence not in source? → rejected
-       ├── Embedding similarity: finding matches documented design decision? → false positive
+       ├── Auto-filter: line out of bounds? evidence not in source? → rejected
+       ├── Embedding similarity: matches documented design decision? → false positive
        └── Whitelist: known-good pattern with file glob match? → suppressed
 ```
-
-## Why tree-sitter instead of regex
-
-Regex can't reliably track where a function ends in nested code. For cryptography, approximate coverage isn't useful — you need exact data flow from IV origin to encryption call. Tree-sitter gives you a real AST.
-
-The data flow tracer pre-computes paths like `iv → deriveChunkIV → HKDF → baseIV` so the LLM doesn't have to. A 7B model can't reliably trace variable origins across 200 lines. But it can answer "is CRYPTO_RANDOM safe for an IV?" — that's a binary check it handles well.
-
-## Why 3 runs at different temperatures
-
-Cross-validation. If all 3 runs flag the same issue, it's probably real. If only 1 of 3 finds it, it's probably a hallucination. Consensus scores (1.0 / 0.67 / 0.33) give you confidence levels to prioritize triage.
-
-## Why embedding triage
-
-The LLM flags `deriveChunkIV` as "IV reuse risk". But the design docs describe this as intentional — HKDF with fileId + chunkIndex as context. Embedding similarity between the finding and the design docs catches this and suppresses the false positive automatically.
-
-## Coverage
 
 15 YAML checklists, 98 security items across 9 domains:
 
@@ -66,92 +67,178 @@ The LLM flags `deriveChunkIV` as "IV reuse risk". But the design docs describe t
 | `p2p` | 5 | WebRTC signaling, ECDH key exchange |
 | `validation` | 8 | Input validation, injection prevention |
 
-## Requirements
+---
 
-- Docker Desktop (running)
-- Ollama with `deepseek-r1:7b` and `nomic-embed-text`
-- ~4GB VRAM minimum
+## Adversarial Testing Results (2026-04-14)
 
-Ollama runs on the host, not in Docker. GPU passthrough to Docker on Windows requires extra setup; connecting via `host.docker.internal` is simpler. The codebase is mounted read-only — the audit cannot modify your code.
+### Summary
+
+| Category | Tests | Passed | Failed |
+|----------|------:|-------:|-------:|
+| Nuclei (custom templates) | 12 | 12 | 0 |
+| Race conditions | 4 | 3 | 1 |
+| Chaos engineering | 6 | 6 | 0 |
+| **Total** | **22** | **21** | **1** |
+
+The single failure was caused by CSRF enforcement blocking a request before the rate limiter evaluated it. Not a vulnerability.
+
+### Nuclei
+
+15 custom templates across 7 categories. Each template encodes exact knowledge of the tRPC endpoint paths and input schemas.
+
+- **Authentication**: 9 protected endpoints rejected without JWT. Forged and expired tokens rejected. MFA brute force rate limited.
+- **IDOR**: Sequential file ID enumeration returns NOT_FOUND (never FORBIDDEN). No existence inference possible.
+- **Rate limiting**: Login, registration, abuse report, and Shamir recovery endpoints all enforced under concurrent load.
+- **Injection**: SQL injection, XSS, and path traversal payloads rejected by Zod schemas. No reflections in responses.
+- **Headers**: CSP script-src has no unsafe-inline. X-Frame-Options DENY. No server version leak.
+- **CORS**: Foreign origins rejected. No credential reflection.
+- **Sessions**: Sensitive fields (opaqueRecord, mfaSecret, backupCodes) absent from all responses.
+
+### Race Conditions
+
+50 concurrent requests per test.
+
+| Test | Result |
+|------|--------|
+| Double registration (same email) | 50/50 rate limited (429) |
+| Login brute force | 50/50 rate limited (429) |
+| CSRF bypass (no token) | 10/10 rejected (403) |
+
+### Chaos Engineering
+
+Infrastructure failures injected via Toxiproxy.
+
+| Failure | Application behavior |
+|---------|---------------------|
+| Redis killed | Rate limiter fails closed (429). Auth endpoint responds without hanging. |
+| Database +3s latency | Request completes without corruption. |
+| Redis 50% packet loss | 5/5 requests recovered. |
+| Database connection reset | No partial writes. Request fully rejected. |
+
+---
 
 ## Usage
 
+### Static analysis
+
 ```bash
-# Full audit (all 9 domains, 30-90 min)
-bash run.sh full
+# Full audit (all 9 domains)
+./run.sh full
 
 # Single domain
-bash run.sh audit crypto
-bash run.sh audit auth
+./run.sh audit crypto
 
-# Multiple domains
-bash run.sh audit crypto auth
-
-# Triage
-bash run.sh triage-init    # first time: index design docs
-bash run.sh triage         # filter false positives
+# Triage false positives
+./run.sh triage-init    # first time: index design docs
+./run.sh triage
 ```
 
-## Output
+### Adversarial testing
 
-JSON reports in `./reports/`:
+```bash
+# Full attack suite (Nuclei + race tester)
+./run.sh adversarial
 
-```json
-{
-  "file": "apps/web/src/lib/fileCrypto.ts",
-  "line_start": 142,
-  "line_end": 158,
-  "severity": "high",
-  "checklist_item": "C09",
-  "finding": "Chunks can be reordered without detection",
-  "evidence": "const encrypted = await crypto.subtle.encrypt(...)",
-  "suggestion": "Bind chunk index to AAD parameter",
-  "consensus": 1.0,
-  "triage_status": "validated"
-}
+# Chaos engineering only
+./run.sh adversarial-chaos
+
+# Continuous fuzzing (default 300s)
+./run.sh adversarial-fuzz 600
+
+# Start stack for manual testing
+./run.sh adversarial-up
+
+# Cleanup
+./run.sh adversarial-down
 ```
 
-Prioritize `validated` + `critical` first. Ignore `rejected` and `whitelisted`.
+### Dashboard
+
+```bash
+./run.sh dashboard    # http://localhost:7800
+```
+
+---
+
+## Requirements
+
+### Static analysis
+- Docker Desktop
+- Ollama with `deepseek-r1:7b` and `nomic-embed-text`
+- ~4GB VRAM minimum
+
+### Adversarial testing
+- Docker Desktop
+- ~4GB RAM for the full stack
+- No GPU required
+
+Ollama runs on the host. The codebase is mounted read-only. No code or test data leaves the machine.
+
+---
 
 ## Structure
 
 ```
 stenvault-audit/
-├── run.sh                          Entry point
-├── docker-compose.yml              2 containers: ast-parser + triage
-├── ast-parser/
-│   ├── src/parser.py               Tree-sitter AST extraction + call graph
-│   ├── src/data_flow.py            Crypto variable origin tracing
-│   └── src/prompt_builder.py       Prompt formatting
-├── triage/
-│   ├── src/auto_filter.py          Layer 1: rule-based rejection
-│   ├── src/embedding_triage.py     Layer 2: design doc similarity
-│   └── src/whitelist.py            Layer 3: pattern suppression
-├── checklists/                     15 YAML files, 98 security items
+├── run.sh                          Entry point (all commands)
+├── docker-compose.yml              Static analysis containers
+├── ast-parser/                     Tree-sitter + data flow + prompt builder
+├── triage/                         Auto-filter + embedding + whitelist
+├── checklists/                     15 YAML security checklists (98 items)
 ├── whitelist/                      Known-good patterns
-├── design-docs/                    Design documentation for triage
+├── design-docs/                    Design documentation for triage context
 ├── dashboard/                      Web UI for viewing results
-└── reports/                        JSON output
+├── reports/                        Static analysis JSON output
+└── adversarial/
+    ├── docker-compose.yml          Full stack + attack containers
+    ├── nuclei-templates/           15 custom YAML templates (7 categories)
+    │   ├── auth/                   Auth bypass, MFA, Shamir probing
+    │   ├── idor/                   Cross-user access, ID enumeration
+    │   ├── rate-limit/             Login, register, abuse brute force
+    │   ├── injection/              SQLi, XSS, path traversal, send fuzzing
+    │   ├── crypto/                 Version downgrade, plaintext rejection
+    │   ├── session/                JWT manipulation, SSE probing
+    │   └── headers/                CSP, CORS, cookie flags
+    ├── seed/                       Test data seeder
+    ├── race-tester/                Concurrent request harness
+    ├── chaos-tester/               Toxiproxy failure injection
+    └── reports/                    Adversarial test output
 ```
 
-## Custom checklists
+---
+
+## Custom templates
 
 ```yaml
-# checklists/my_domain.yaml
-checklist_id: my_custom_check
-stage: crypto
-items:
-  - id: C99
-    question: "Is the key at least 256 bits?"
-    severity: critical
+id: stenvault-my-test
+info:
+  name: Description of what this tests
+  severity: high
+  tags: category
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/api/trpc/router.procedure"
+    body: '{"json":{"field":"{{payload}}"}}'
+    payloads:
+      payload:
+        - "malicious-value"
+    matchers:
+      - type: word
+        words:
+          - "should-not-appear"
+        negative: true
 ```
 
-Rebuild and run: `bash run.sh build && bash run.sh audit crypto`
+Add YAML files to `adversarial/nuclei-templates/<category>/`. They execute automatically on the next `./run.sh adversarial`.
+
+---
 
 ## Ecosystem
 
 | Project | Purpose |
 |---------|---------|
-| [StenVault](https://github.com/Gefson-costa/stenvault) | Zero-knowledge encrypted cloud storage (open-source client) |
+| [StenVault](https://github.com/Gefson-costa/stenvault) | Zero-knowledge encrypted cloud storage |
 | [StenVault RAG](https://github.com/Gefson-costa/stenvault-rag) | Local codebase search and Q&A |
-| **StenVault Audit** (this repo) | Automated security audit pipeline |
+| **StenVault Audit** (this repo) | Security audit and adversarial testing pipeline |

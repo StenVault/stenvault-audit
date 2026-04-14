@@ -15,3 +15,10 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Extracted plan sections
+pipeline-audit.md
+
+# Adversarial testing
+adversarial/.env
+adversarial/reports/
