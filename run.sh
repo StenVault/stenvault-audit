@@ -107,6 +107,9 @@ case "$COMMAND" in
     echo "--- Nuclei ---"
     docker compose -f adversarial/docker-compose.yml logs nuclei 2>/dev/null | tail -20
     echo ""
+    echo "--- ZAP ---"
+    docker compose -f adversarial/docker-compose.yml logs zap 2>/dev/null | tail -20
+    echo ""
     echo "--- Report Generator ---"
     docker compose -f adversarial/docker-compose.yml logs report-generator 2>/dev/null
     echo ""
@@ -177,7 +180,7 @@ case "$COMMAND" in
     echo "  dashboard            Open web dashboard (http://localhost:7800)"
     echo ""
     echo "Adversarial (live attack simulation):"
-    echo "  adversarial          Full attack: build stack, seed, Nuclei + race tester"
+    echo "  adversarial          Full attack: build stack, seed, Nuclei + ZAP + race + chaos"
     echo "  adversarial-up       Start stack only (for manual testing / Burp)"
     echo "  adversarial-chaos    Run chaos engineering (Toxiproxy kills Redis/DB)"
     echo "  adversarial-fuzz [s] Run Nuclei in loop for N seconds (default 300)"
