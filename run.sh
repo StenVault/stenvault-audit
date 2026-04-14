@@ -92,16 +92,20 @@ case "$COMMAND" in
     echo "Running attacks (this takes 5-15 min)..."
     docker compose -f adversarial/docker-compose.yml up \
       --abort-on-container-exit \
-      --exit-code-from nuclei 2>&1 | tee adversarial/reports/run-$(date +%Y%m%d_%H%M%S).log
+      --exit-code-from report-generator 2>&1 | tee adversarial/reports/run-$(date +%Y%m%d_%H%M%S).log
     echo ""
     echo "=== ADVERSARIAL COMPLETE ==="
-    echo "Reports in adversarial/reports/"
-    ls -la adversarial/reports/*.json 2>/dev/null | tail -5
+    if [ -f adversarial/reports/SUMMARY.md ]; then
+      echo ""
+      cat adversarial/reports/SUMMARY.md
+    fi
+    echo ""
+    echo "Full report: adversarial/reports/SUMMARY.md"
     ;;
 
   adversarial-up)
     echo "Starting StenVault stack (stays running for manual testing)..."
-    docker compose -f adversarial/docker-compose.yml up -d app db redis minio minio-init
+    docker compose -f adversarial/docker-compose.yml up -d app db redis redis-rest minio minio-init
     echo ""
     echo "App: http://localhost:3000"
     echo "MinIO Console: http://localhost:9001 (minioadmin/minioadmin)"
@@ -128,7 +132,7 @@ case "$COMMAND" in
   adversarial-fuzz)
     DURATION=${1:-300}
     echo "=== LONG-RUNNING FUZZER (${DURATION}s) ==="
-    FUZZ_DURATION=$DURATION docker compose -f adversarial/docker-compose.yml run --rm fuzzer
+    FUZZ_DURATION=$DURATION docker compose -f adversarial/docker-compose.yml --profile fuzz run --rm fuzzer
     ;;
 
   adversarial-down)
