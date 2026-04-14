@@ -22,3 +22,6 @@ pipeline-audit.md
 # Adversarial testing
 adversarial/.env
 adversarial/reports/
+
+# Local-only guides
+LOCAL_RUN_GUIDE.md
