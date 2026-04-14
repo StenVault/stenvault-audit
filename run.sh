@@ -89,18 +89,37 @@ case "$COMMAND" in
     echo ""
     docker compose -f adversarial/docker-compose.yml build
     echo ""
-    echo "Running attacks (this takes 5-15 min)..."
-    docker compose -f adversarial/docker-compose.yml up \
-      --abort-on-container-exit \
-      --exit-code-from report-generator 2>&1 | tee adversarial/reports/run-$(date +%Y%m%d_%H%M%S).log
+    echo "Starting pipeline in background..."
+    docker compose -f adversarial/docker-compose.yml up -d 2>&1 | tee adversarial/reports/run-$(date +%Y%m%d_%H%M%S).log
     echo ""
-    echo "=== ADVERSARIAL COMPLETE ==="
+    echo "Waiting for report-generator to complete (this takes 5-15 min)..."
+    echo "  Follow live: docker compose -f adversarial/docker-compose.yml logs -f"
+    echo ""
+    docker compose -f adversarial/docker-compose.yml wait report-generator 2>&1
+    EXIT_CODE=$?
+    echo ""
+    echo "=== Pipeline finished (exit $EXIT_CODE) ==="
+    echo ""
+    # Show key container logs
+    echo "--- Seed ---"
+    docker compose -f adversarial/docker-compose.yml logs seed 2>/dev/null | tail -15
+    echo ""
+    echo "--- Nuclei ---"
+    docker compose -f adversarial/docker-compose.yml logs nuclei 2>/dev/null | tail -20
+    echo ""
+    echo "--- Report Generator ---"
+    docker compose -f adversarial/docker-compose.yml logs report-generator 2>/dev/null
+    echo ""
+    # Show summary report
     if [ -f adversarial/reports/SUMMARY.md ]; then
-      echo ""
+      echo "=== SUMMARY ==="
       cat adversarial/reports/SUMMARY.md
     fi
     echo ""
     echo "Full report: adversarial/reports/SUMMARY.md"
+    echo "Cleaning up..."
+    docker compose -f adversarial/docker-compose.yml down
+    exit $EXIT_CODE
     ;;
 
   adversarial-up)
