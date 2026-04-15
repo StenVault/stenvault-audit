@@ -19,9 +19,8 @@ Thumbs.db
 # Extracted plan sections
 pipeline-audit.md
 
-# Adversarial testing
-adversarial/.env
-adversarial/reports/
+# Adversarial testing (kept local-only, not in repo)
+adversarial/
 
 # Local-only guides
 LOCAL_RUN_GUIDE.md
