@@ -61,6 +61,25 @@ case "$COMMAND" in
     cd dashboard && pip install -q -r requirements.txt 2>/dev/null && python app.py
     ;;
 
+  audit-v2)
+    echo "Running v2 whole-file audit (strong model + structured output)..."
+    docker compose run --rm --entrypoint python ast-parser entrypoint_v2.py audit-v2 "$@"
+    ;;
+
+  agentic)
+    echo "Running agentic audit (tool-using investigation + verifier)..."
+    docker compose run --rm --entrypoint python ast-parser entrypoint_v2.py agentic "$@"
+    ;;
+
+  diff-audit)
+    echo "Running diff-scoped audit (only files changed since base ref)..."
+    docker compose run --rm --entrypoint python ast-parser entrypoint_v2.py diff "$@"
+    ;;
+
+  compare)
+    docker compose run --rm --entrypoint python ast-parser entrypoint_v2.py compare "$@"
+    ;;
+
   full)
     echo "=== FULL AUDIT PIPELINE ==="
     echo ""
@@ -178,6 +197,14 @@ case "$COMMAND" in
     echo "  depgraph             Build and display dependency graph only"
     echo "  semgrep              Run Semgrep standalone (deterministic SAST, no LLM)"
     echo "  dashboard            Open web dashboard (http://localhost:7800)"
+    echo ""
+    echo "v2 (strong local model + structured output, entrypoint_v2.py):"
+    echo "  audit-v2 [stage...]  Whole-file audit + adversarial self-verify (Path 1)"
+    echo "  agentic [stage...]   Tool-using agent investigates, then verifier (Path 2)"
+    echo "  diff-audit [ref]     Audit only files changed since ref (default HEAD~1, Path 3)"
+    echo "  compare <a> <b>      Diff two report JSONs into a markdown comparison"
+    echo ""
+    echo "  v2 env: AUDIT_MODEL (qwen3.5:9b), VERIFIER_MODEL, AUDIT_THINK, DIFF_AGENTIC"
     echo ""
     echo "Adversarial (live attack simulation):"
     echo "  adversarial          Full attack: build stack, seed, Nuclei + ZAP + race + chaos"

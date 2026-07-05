@@ -133,6 +133,32 @@ Infrastructure failures injected via Toxiproxy.
 ./run.sh triage
 ```
 
+### Static analysis — v2 (strong local model + structured output)
+
+The v2 paths drop chunking and 3x-temperature consensus in favor of whole-file
+analysis by a strong local model (default `qwen3.5:9b`) with schema-constrained
+output, followed by one adversarial self-verification pass that removes false
+positives. Findings are reported with full accounting (raw / confirmed /
+suppressed) and stay drop-in compatible with `./run.sh triage`.
+
+```bash
+# Path 1 — whole-file audit + verifier
+./run.sh audit-v2 crypto
+
+# Path 2 — agentic: the model investigates with read/grep/get_symbol tools
+./run.sh agentic crypto
+
+# Path 3 — audit only files changed since a git ref (default HEAD~1)
+./run.sh diff-audit HEAD~5
+
+# Compare two report JSONs (e.g. legacy vs v2)
+./run.sh compare crypto_20260101_120000.json whole_file_20260705_120000.json
+```
+
+Config (env): `AUDIT_MODEL`, `VERIFIER_MODEL` (default `qwen3.5:9b`),
+`AUDIT_THINK` (`false`), `AUDIT_NUM_CTX` (`16384`), `AGENT_MAX_STEPS` (`8`),
+`DIFF_AGENTIC` (`false`). All local-first; no code leaves the machine.
+
 ### Adversarial testing
 
 ```bash

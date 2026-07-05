@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ /app/src/
 COPY entrypoint.py /app/
+COPY entrypoint_v2.py /app/
 COPY semgrep-rules/ /app/semgrep-rules/
 
 ENTRYPOINT ["python", "entrypoint.py"]

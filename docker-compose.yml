@@ -20,6 +20,13 @@ services:
       - MODEL_CONFIGS=${MODEL_CONFIGS:-{}}
       - RUNS_PER_CHUNK=3
       - MAX_CHUNK_LINES=200
+      # v2 audit paths (entrypoint_v2.py) — strong local models, structured output
+      - AUDIT_MODEL=${AUDIT_MODEL:-qwen3.5:9b}
+      - VERIFIER_MODEL=${VERIFIER_MODEL:-qwen3.5:9b}
+      - AUDIT_THINK=${AUDIT_THINK:-false}
+      - AUDIT_NUM_CTX=${AUDIT_NUM_CTX:-16384}
+      - AGENT_MAX_STEPS=${AGENT_MAX_STEPS:-8}
+      - DIFF_AGENTIC=${DIFF_AGENTIC:-false}
       - ENABLE_DEPGRAPH=${ENABLE_DEPGRAPH:-true}
       - ENABLE_SEMGREP=${ENABLE_SEMGREP:-true}
       - ENABLE_ADVERSARIAL=${ENABLE_ADVERSARIAL:-true}
