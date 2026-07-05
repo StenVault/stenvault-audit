@@ -22,7 +22,7 @@ def verify_evidence_ast(findings: list[dict], codebase_root: str) -> list[dict]:
     Sets evidence_quality: "exact" | "fuzzy" | "no_match"
     """
     # Cache parsed files
-    file_cache: dict[str, tuple[Node | None, list[str]]] = {}
+    file_cache: dict[str, tuple[Node | None, list[str], bytes]] = {}
 
     for f in findings:
         # Skip already-rejected findings
@@ -43,11 +43,11 @@ def verify_evidence_ast(findings: list[dict], codebase_root: str) -> list[dict]:
                     source = fh.read()
                 root = _parser.parse(source).root_node
                 lines = source.decode("utf-8", errors="replace").split("\n")
-                file_cache[file_key] = (root, lines)
+                file_cache[file_key] = (root, lines, source)
             except (OSError, UnicodeDecodeError):
-                file_cache[file_key] = (None, [])
+                file_cache[file_key] = (None, [], b"")
 
-        root, lines = file_cache[file_key]
+        root, lines, source = file_cache[file_key]
         if root is None:
             f["evidence_quality"] = "no_match"
             continue
@@ -96,7 +96,7 @@ def verify_evidence_ast(findings: list[dict], codebase_root: str) -> list[dict]:
 
         # Verify 3: Check if the right kind of code is at the claimed line
         # Use tree-sitter to check for crypto-relevant nodes
-        quality = _verify_construct_at_line(root, line_start, checklist_item, source_bytes=open(file_path, "rb").read())
+        quality = _verify_construct_at_line(root, line_start, checklist_item, source_bytes=source)
         f["evidence_quality"] = quality
 
     return findings

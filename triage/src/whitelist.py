@@ -4,13 +4,11 @@ Suppresses findings that match documented intentional design patterns.
 """
 
 import json
+import os
 import re
 from pathlib import Path
 from fnmatch import fnmatch
 
-WHITELIST_DIR = Path(os.environ.get("WHITELIST_DIR", "/whitelist")) if "os" in dir() else Path("/whitelist")
-
-import os
 WHITELIST_DIR = Path(os.environ.get("WHITELIST_DIR", "/whitelist"))
 
 
